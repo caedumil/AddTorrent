@@ -25,63 +25,91 @@ import re
 import sys
 import argparse
 import configparser
-
 import notify2
 import transmissionrpc
+from collections import namedtuple
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-p", "--profile", type=str, default="default",
-    help="Define profile to read from config file."
-)
-parser.add_argument(
-    "-n", "--notify", action="store_true",
-    help="Use Desktop Notification for output."
-)
-parser.add_argument(
-    "torrent", metavar="TORRENT", type=str,
-    help="torrent/magnet link to add to transmission."
-)
-args = parser.parse_args()
+def cliArgs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-p",
+        "--profile",
+        type=str,
+        default="default",
+        help="Define profile to read from config file."
+    )
+    parser.add_argument(
+        "-n",
+        "--notify",
+        action="store_true",
+        help="Use Desktop Notification for output."
+    )
+    parser.add_argument(
+        "torrent",
+        metavar="TORRENT",
+        type=str,
+        help="torrent/magnet link to add to transmission."
+    )
+    return parser
 
 
-config = os.environ.get("XDG_CONFIG_HOME")
-if not config:
-    config = os.path.expanduser("~/.config")
+def config(profile):
+    configPath = os.environ.get("XDG_CONFIG_HOME")
+    if not configPath:
+        configPath = os.path.expanduser("~/.config")
+    configPath = os.path.join(configPath, "addtorrent.conf")
 
-config = os.path.join(config, "addtorrent.conf")
+    configFile = configparser.ConfigParser()
+    configFile.read(configPath)
 
-opts = configparser.ConfigParser()
-opts.read(config)
+    config = namedtuple("ConfigOpts", ["server", "port", "user", "passw"])
+    opts = config(
+        server=configFile.get(profile, "SERVER", fallback="localhost"),
+        port=configFile.get(profile, "PORT", fallback="9091"),
+        user=configFile.get(profile, "USER", fallback=None),
+        passw=configFile.get(profile, "PASSW", fallback=None),
+    )
+    return opts
 
-server = opts.get(args.profile, "SERVER", fallback="localhost")
-port = opts.get(args.profile, "PORT", fallback="9091")
-user = opts.get(args.profile, "USER", fallback=None)
-passw = opts.get(args.profile, "PASSW", fallback=None)
 
+def main():
+    parser = cliArgs()
+    args = parser.parse_args()
 
-try:
-    transmission = transmissionrpc.Client(server, port, user, passw)
+    opts = config(args.profile)
 
-    torrent = transmission.add_torrent(args.torrent)
-    summary = "Added"
-    text = torrent.name
+    try:
+        transmission = transmissionrpc.Client(
+            opts.server,
+            opts.port,
+            opts.user,
+            opts.passw
+        )
+        torrent = transmission.add_torrent(args.torrent)
 
-except transmissionrpc.error.TransmissionError as err:
-    if "Request" in err.message:
-        summary = "Connection"
-        text = err.message
+    except transmissionrpc.error.TransmissionError as err:
+        if "Request" in err.message:
+            summary = "Connection"
+            text = err.message
+
+        else:
+            summary = "Error"
+            text = re.findall('"(.*)"', err.message)[0]
 
     else:
-        summary = "Error"
-        text = re.findall('"(.*)"', err.message)[0]
+        summary = "Added"
+        text = torrent.name
 
-finally:
-    if args.notify:
-        notify2.init("Torrent")
-        bubble = notify2.Notification(summary, text, "message-email")
-        bubble.show()
+    finally:
+        if args.notify:
+            notify2.init("Torrent")
+            bubble = notify2.Notification(summary, text, "message-email")
+            bubble.show()
 
-    else:
-        print("{}: {}".format(summary, text))
+        else:
+            print("{}: {}".format(summary, text))
+
+
+if __name__ == "__main__":
+    main()
