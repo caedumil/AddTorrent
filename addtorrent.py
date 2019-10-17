@@ -1,6 +1,6 @@
 #!/usr/bin/env  python3
 
-#Copyright (c) 2016-2018 Carlos Millett
+#Copyright (c) 2016-2019 Carlos Millett
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +25,10 @@ import re
 import sys
 import argparse
 import configparser
-import notify2
 import transmissionrpc
 from collections import namedtuple
+
+from pydbus import SessionBus
 
 
 def cliArgs():
@@ -103,9 +104,18 @@ def main():
 
     finally:
         if args.notify:
-            notify2.init("Torrent")
-            bubble = notify2.Notification(summary, text, "message-email")
-            bubble.show()
+            bus = SessionBus()
+            bubble = bus.get('.Notifications')
+            bubble.Notify(
+                'Torrent',
+                0,
+                'message-email',
+                summary,
+                text,
+                [],
+                {},
+                -1
+            )
 
         else:
             print("{}: {}".format(summary, text))

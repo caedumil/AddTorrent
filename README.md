@@ -6,7 +6,7 @@ Can handle \*.torrent files or magnet links
 ## Requires
 
 * python 3
-* python-notify2
+* python-pydbus
 * python-transmissionrpc
 
 ## Usage
