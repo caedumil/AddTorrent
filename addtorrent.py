@@ -25,9 +25,9 @@ import re
 import sys
 import argparse
 import configparser
-import transmissionrpc
 from collections import namedtuple
 
+import transmissionrpc
 from pydbus import SessionBus
 
 
