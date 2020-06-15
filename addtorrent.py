@@ -20,65 +20,87 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-import os
-import re
-import sys
+
 import argparse
 import configparser
-from collections import namedtuple
+from os import environ
+from re import findall
+from pathlib import Path
 
 import transmissionrpc
 from pydbus import SessionBus
 
 
-def cliArgs():
+class Config():
+    def __init__(self, server='localhost', port='9091', user=None, passw=None):
+        self._server = server
+        self._port = port
+        self._user = user
+        self._passw = passw
+
+    @property
+    def server(self):
+        return self._server
+
+    @property
+    def port(self):
+        return self._port
+
+    @property
+    def user(self):
+        return self._user
+
+    @property
+    def passwd(self):
+        return self._passwd
+
+
+def cli():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-p",
-        "--profile",
+        '-p',
+        '--profile',
         type=str,
-        default="default",
-        help="Define profile to read from config file."
+        default='default',
+        help='Define profile to read from config file.'
     )
     parser.add_argument(
-        "-n",
-        "--notify",
-        action="store_true",
-        help="Use Desktop Notification for output."
+        '-n',
+        '--notify',
+        action='store_true',
+        help='Use Desktop Notification for output.'
     )
     parser.add_argument(
-        "torrent",
-        metavar="TORRENT",
+        'torrent',
+        metavar='TORRENT',
         type=str,
-        help="torrent/magnet link to add to transmission."
+        help='torrent/magnet link to add to transmission.'
     )
     return parser
 
 
-def config(profile):
-    configPath = os.environ.get("XDG_CONFIG_HOME")
-    if not configPath:
-        configPath = os.path.expanduser("~/.config")
-    configPath = os.path.join(configPath, "addtorrent.conf")
+def conf(profile):
+    configPath = Path(
+        environ.get('XDG_CONFIG_HOME', '~/.config')
+    ).expanduser()
+    configPath = configPath / 'addtorrent.conf'
 
     configFile = configparser.ConfigParser()
     configFile.read(configPath)
 
-    config = namedtuple("ConfigOpts", ["server", "port", "user", "passw"])
-    opts = config(
-        server=configFile.get(profile, "SERVER", fallback="localhost"),
-        port=configFile.get(profile, "PORT", fallback="9091"),
-        user=configFile.get(profile, "USER", fallback=None),
-        passw=configFile.get(profile, "PASSW", fallback=None),
+    opts = Config(
+        configFile.get(profile, 'SERVER', fallback='localhost'),
+        configFile.get(profile, 'PORT', fallback='9091'),
+        configFile.get(profile, 'USER', fallback=None),
+        configFile.get(profile, 'PASSW', fallback=None),
     )
     return opts
 
 
 def main():
-    parser = cliArgs()
+    parser = cli()
     args = parser.parse_args()
-
-    opts = config(args.profile)
+    opts = conf(args.profile)
 
     try:
         transmission = transmissionrpc.Client(
@@ -90,16 +112,16 @@ def main():
         torrent = transmission.add_torrent(args.torrent)
 
     except transmissionrpc.error.TransmissionError as err:
-        if "Request" in err.message:
-            summary = "Connection"
+        if 'Request' in err.message:
+            summary = 'Connection'
             text = err.message
 
         else:
-            summary = "Error"
-            text = re.findall('"(.*)"', err.message)[0]
+            summary = 'Error'
+            text = findall('"(.*)"', err.message)[0]
 
     else:
-        summary = "Added"
+        summary = 'Added'
         text = torrent.name
 
     finally:
@@ -118,8 +140,8 @@ def main():
             )
 
         else:
-            print("{}: {}".format(summary, text))
+            print('{}: {}'.format(summary, text))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
