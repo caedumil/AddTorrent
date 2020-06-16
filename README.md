@@ -7,6 +7,7 @@ Can handle \*.torrent files or magnet links
 
 * python 3
 * python-pydbus
+* python-bencodepy
 * python-transmissionrpc
 
 ## Usage
