@@ -1,6 +1,6 @@
 #!/usr/bin/env  python3
 
-#Copyright (c) 2016-2019 Carlos Millett
+#Copyright (c) 2016-2020 Carlos Millett
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -21,12 +21,16 @@
 #SOFTWARE.
 
 
+import codecs
+import hashlib
 import argparse
 import configparser
+import urllib.parse
 from os import environ
 from re import findall
 from pathlib import Path
 
+import bencodepy
 import transmissionrpc
 from pydbus import SessionBus
 
@@ -51,8 +55,8 @@ class Config():
         return self._user
 
     @property
-    def passwd(self):
-        return self._passwd
+    def passw(self):
+        return self._passw
 
 
 def cli():
@@ -96,11 +100,36 @@ def conf(profile):
     )
     return opts
 
+# function adapted from 'https://github.com/thomasleveil/magneturi'
+def torrent2magnet(torrent_data):
+    metadata = bencodepy.decode(torrent_data)
+    hash_contents = bencodepy.bencode(metadata[b'info'])
+    digest = hashlib.sha1(hash_contents).digest()
+    hexhash = codecs.encode(digest, 'hex')
+
+    if b'announce-list' in metadata:
+        tracker_list = ''.join(
+            ['&tr='+urllib.parse.quote_plus(t[0]) for t in metadata[b'announce-list']]
+        )
+    elif b'announce' in metadata:
+        tracker_list = '&tr='+urllib.parse.quote_plus(metadata[b'announce'])
+    else:
+        tracker_list = ''
+
+    result = ''.join([hexhash.decode('ASCII'), tracker_list])
+    return f'magnet:?xt=urn:btih:{result}'
+
 
 def main():
     parser = cli()
     args = parser.parse_args()
     opts = conf(args.profile)
+
+    if args.torrent.endswith('.torrent'):
+        torrent = Path(args.torrent)
+        magnet = torrent2magnet(torrent.read_bytes())
+    else:
+        magnet = args.torrent
 
     try:
         transmission = transmissionrpc.Client(
@@ -109,7 +138,7 @@ def main():
             opts.user,
             opts.passw
         )
-        torrent = transmission.add_torrent(args.torrent)
+        torrent = transmission.add_torrent(magnet)
 
     except transmissionrpc.error.TransmissionError as err:
         if 'Request' in err.message:
