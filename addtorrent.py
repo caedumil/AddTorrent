@@ -31,7 +31,7 @@ from re import findall
 from pathlib import Path
 
 import bencodepy
-import transmissionrpc
+import transmission_rpc
 from pydbus import SessionBus
 
 
@@ -132,15 +132,15 @@ def main():
         magnet = args.torrent
 
     try:
-        transmission = transmissionrpc.Client(
-            opts.server,
-            opts.port,
-            opts.user,
-            opts.passw
+        transmission = transmission_rpc.Client(
+            username=opts.user,
+            password=opts.passw,
+            host=opts.server,
+            port=opts.port
         )
         torrent = transmission.add_torrent(magnet)
 
-    except transmissionrpc.error.TransmissionError as err:
+    except transmission_rpc.error.TransmissionError as err:
         if 'Request' in err.message:
             summary = 'Connection'
             text = err.message
