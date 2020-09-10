@@ -121,6 +121,25 @@ def torrent2magnet(torrent_data):
     return f'magnet:?xt=urn:btih:{result}'
 
 
+def print_msg(notify, summary, text):
+    if notify:
+        bus = SessionBus()
+        bubble = bus.get('.Notifications')
+        bubble.Notify(
+            'Torrent',
+            0,
+            'dialog-information',
+            summary,
+            text,
+            [],
+            {},
+            -1
+        )
+
+    else:
+        print('{}: {}'.format(summary, text))
+
+
 def main():
     parser = cli()
     args = parser.parse_args()
@@ -129,9 +148,15 @@ def main():
     if args.torrent.endswith('.torrent'):
         torrent = Path(args.torrent)
         magnet = torrent2magnet(torrent.read_bytes())
-    else:
+    elif args.torrent.startswith('magnet:'):
         magnet = args.torrent
+    else:
+        print_msg(args.notify, 'Error', 'Not a torrent file or magnet link.')
+        return 1
 
+    summary = ''
+    text = ''
+    status = 0
     try:
         transmission = transmission_rpc.Client(
             username=opts.user,
@@ -155,23 +180,8 @@ def main():
         summary = 'Added'
         text = torrent.name
 
-    finally:
-        if args.notify:
-            bus = SessionBus()
-            bubble = bus.get('.Notifications')
-            bubble.Notify(
-                'Torrent',
-                0,
-                'message-email',
-                summary,
-                text,
-                [],
-                {},
-                -1
-            )
-
-        else:
-            print('{}: {}'.format(summary, text))
+    print_msg(args.notify, summary, text)
+    return status
 
 
 if __name__ == '__main__':
