@@ -27,7 +27,6 @@ import argparse
 import configparser
 import urllib.parse
 from os import environ
-from re import findall
 from pathlib import Path
 from requests.exceptions import ConnectionError
 
@@ -100,6 +99,7 @@ def conf(profile):
         configFile.get(profile, 'PASSW', fallback=None),
     )
     return opts
+
 
 # function adapted from 'https://github.com/thomasleveil/magneturi'
 def torrent2magnet(torrent_data):
