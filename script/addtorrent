@@ -29,6 +29,7 @@ import urllib.parse
 from os import environ
 from re import findall
 from pathlib import Path
+from requests.exceptions import ConnectionError
 
 import bencodepy
 import transmission_rpc
@@ -141,13 +142,14 @@ def main():
         torrent = transmission.add_torrent(magnet)
 
     except transmission_rpc.error.TransmissionError as err:
-        if 'Request' in err.message:
-            summary = 'Connection'
-            text = err.message
+        summary = 'Transmission'
+        text = err.message
+        status = 1
 
-        else:
-            summary = 'Error'
-            text = findall('"(.*)"', err.message)[0]
+    except ConnectionError:
+        summary = 'Connection'
+        text = 'Failed to establish connection.'
+        status = 1
 
     else:
         summary = 'Added'
