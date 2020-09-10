@@ -1,14 +1,13 @@
 # AddTorrent
 
-Script to add torrents to transmission-daemon.
+Python 3 script to add torrents to transmission-daemon.
 Can handle \*.torrent files or magnet links
 
-## Requires
+## Dependencies
 
-* python 3
-* python-pydbus
-* python-bencodepy
-* python-transmissionrpc
+* pydbus
+* bencode.py
+* transmission-rpc
 
 ## Usage
 
